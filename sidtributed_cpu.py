@@ -1,5 +1,5 @@
 ########2018/9/12#########
-#######maoruichao#######
+#######maoruichao########
 
 from commands import getstatusoutput as get
 from os import system as oss
