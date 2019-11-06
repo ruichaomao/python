@@ -8,10 +8,11 @@ class Com_resource():
         #file = os.popen("ssh n1 'getent passwd | cut -d: -f1'").readlines()
         #self.user_list=[a.strip() for a in file]
         self.user_list = ['root', 'bin', 'daemon', 'adm', 'lp', 'sync', 'shutdown', 'halt', 'mail', 'uucp', 'operator', 'games', 'gopher', 'ftp', 'nobody', 'dbus', 'usbmuxd', 'rpc', 'vcsa', 'rtkit', 'abrt', 'avahi-autoipd', 'saslauth', 'postfix', 'rpcuser', 'nfsnobody', 'haldaemon', 'gdm', 'ntp', 'apache', 'pulse', 'sshd', 'tcpdump', 'jgao', 'bdf', 'gj', 'xiem', 'bsuo', 'genli', 'jgao', 'yangjiajun', 'guojianping', 'wise', 'liuyang', 'zhangxuan', 'randy', 'horaira', 'dongtiange', 'penghui', 'demo', 'huangxh', 'liqing', 'maoruichao', 'bielihua', 'lvmengting', 'liugroup', 'hexf', 'zhaohui', 'chexin', 'sunyoumin', 'feijunwen', 'wangtao', 'git', 'xumaofeng', 'fangyaping', 'zhanghan', 'cbc', 'dingshuang']
-    def proc_thread_user(self,nodelist=[]):
+    def proc_thread_user_mem(self,nodelist=[]):
         proc_num_list = []
         thread_use_list = []
         user_nodelist = []
+        mem_nodelist = []
         for n in nodelist:
             os.environ['n']=str(n)
             file = os.popen("timeout 12 ssh n$n 'top -d 0 -n 2 -b | grep -i 'day' -A 100 | grep -v -e '--' | tail -n 101;cat /proc/cpuinfo | grep 'processor' | wc -l'").readlines()
@@ -27,7 +28,7 @@ class Com_resource():
                 datalist = [] #toplist
                 for f in file:
                     datalist.append(f.strip().split())
-                #proc & user
+                #1> proc & user
                 line_num = 7
                 proc_num = 0
                 user_1nodelist = []
@@ -37,7 +38,10 @@ class Com_resource():
                     bb = datalist[line_num][11]
                     #print (bb)
                     cc = datalist[line_num][1]
-                    if float(aa) > 50 and bb != 'top':
+                    #mem_usage
+                    dd = datalist[line_num][9]
+                    #if float(aa) > 50 and bb != 'top':
+                    if (float(aa) > 50 or float(dd) > 2) and bb != 'top':
                        #print (n,aa,bb,cc)
                         proc_num += 1
                         user_1nodelist.append(cc)
@@ -52,7 +56,7 @@ class Com_resource():
                 ###
                 proc_num_list.append(proc_num)
                 user_nodelist.append(user_1nodelist)
-                #thread
+                #2> thread
                 Cpu_line = datalist[2] 
                 cpu_usage1 = Cpu_line[1]
                 find_position = cpu_usage1.find('%')
@@ -60,11 +64,26 @@ class Com_resource():
                 remain = int(math.ceil(num_proc*(cpu_usage/100)))
                 #print ("Thread usage:"+str(remain)+'/'+str(num_proc))
                 thread_use_list.append(str(remain)+'/'+str(num_proc))
+                #3> mem
+                mem_line = datalist[3]
+                swap_line = datalist[4]
+                total_memk = mem_line[1]
+                total_mem = '%.0f' % (int(total_memk[:total_memk.find('k')])/1024/1024)
+                #realused = used-buffer-cach
+                used_memk = mem_line[3]
+                used = int(used_memk[:used_memk.find('k')])
+                buff_memk = mem_line[7]
+                buff = int(buff_memk[:buff_memk.find('k')])
+                cach_memk = swap_line[7]
+                cach = int(cach_memk[:cach_memk.find('k')])
+                total_used = '%.0f' % ((used -buff -cach)/1024/1024)
+                mem_nodelist.append(total_used+'/'+total_mem)
             else:
                 proc_num_list.append("Process blocking...")
                 thread_use_list.append('')
                 user_nodelist.append('')
-        return proc_num_list,thread_use_list,user_nodelist
+                mem_nodelist.append('')
+        return proc_num_list,thread_use_list,user_nodelist,mem_nodelist
     def proc_thread(self,nodelist=[]):
         proc_num_list = []
         thread_use_list = []
@@ -90,7 +109,9 @@ class Com_resource():
                     #print (aa)
                     bb = datalist[line_num][11]
                     #print (bb)
-                    if float(aa) > 50 and bb != 'top':
+                    dd = datalist[line_num][9]
+                    #if float(aa) > 50 and bb != 'top':
+                    if (float(aa) > 50 or float(dd) > 2) and bb != 'top':
                         proc_num += 1
                     line_num += 1
                 proc_num_list.append(proc_num)
@@ -162,32 +183,34 @@ class Com_resource():
 
 if __name__ == '__main__':
     test = Com_resource()
-    #cpu_nlist = [1,2,3,4,5,6,8,10,11,14,15,16,17,18,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40]
-    #gpu_nlist = [7,9,12,13,19,22,41,42,43,44,45,46,47,48]
-    cpu_nlist = [1,2,3,16]
-    gpu_nlist = [7,12,45,46]
-    haha = test.proc_thread_user(cpu_nlist)
+    cpu_nlist = [1,2,3,4,5,6,8,10,11,14,15,16,17,18,23,24,25,26,27,28,29,31,32,33,34,35,36,37,38,39,40]
+    gpu_nlist = [7,9,12,13,19,22,41,42,43,44,45,46,47,48]
+    #cpu_nlist = [1,39]
+    #gpu_nlist = [7,45]
+    haha = test.proc_thread_user_mem(cpu_nlist)
     cpu_proc = haha[0]
     cpu_thread = haha[1]
     cpu_proc_user = haha[2]
-    gaga = test.proc_thread_user(gpu_nlist)
+    cpu_mem = haha[3] 
+    gaga = test.proc_thread_user_mem(gpu_nlist)
     gpu_proc = gaga[0]
     gpu_thread = gaga[1]
     gpu_proc_user = gaga[2]
+    gpu_mem = gaga[3]
     ff = open('iinter.dat','w')
     #ff.write('     CPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread\n')
-    ff.write('         CPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread'+'  '+'users'+'\n')
+    ff.write('              '+'CPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread'+'  '+'Memory'+'  '+'users'+'\n')
     num = 0
     for i in cpu_nlist:
         #ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(cpu_proc[num])))+('{:>6}'.format(str(cpu_thread[num])))+"\n")
-        ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(cpu_proc[num])))+('{:>6}'.format(str(cpu_thread[num])))+"  "+('{:<6}'.format(','.join(list(set(cpu_proc_user[num])))))+"\n")
+        ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(cpu_proc[num])))+('{:>6}'.format(str(cpu_thread[num])))+"  "+('{:>6}'.format(str(cpu_mem[num])))+'  '+('{:<6}'.format(','.join(list(set(cpu_proc_user[num])))))+"\n")
         num += 1
     #ff.write('     GPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread\n')
-    ff.write('          GPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread'+'  '+'users'+'\n')
+    ff.write('              '+'GPU-USAGE\n'+'node'+'  '+'process'+'  '+'thread'+'  '+'Memory'+'  '+'users'+'\n')
     num2 = 0
     for i in gpu_nlist:
        #ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(gpu_proc[num2])))+('{:>6}'.format(str(gpu_thread[num2])))+"\n")
-        ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(gpu_proc[num2])))+('{:>6}'.format(str(gpu_thread[num2])))+"  "+('{:<6}'.format(','.join(list(set(gpu_proc_user[num2])))))+"\n")
+        ff.write(('{:<9}'.format('n'+(str(i))))+('{:<6}'.format(str(gpu_proc[num2])))+('{:>6}'.format(str(gpu_thread[num2])))+"  "+('{:>6}'.format(str(gpu_mem[num2])))+'  '+('{:<6}'.format(','.join(list(set(gpu_proc_user[num2])))))+"\n")
         num2 +=1
     ff.close()
 #cpu temp ---need install lm-sensors
