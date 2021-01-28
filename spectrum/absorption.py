@@ -29,7 +29,7 @@ class Absorption():
             dipole3 = [float(i) for i in dipole2]
             #print (dipole3)
         return dipole3
-
+ 
     #get the the adjusted dipole
     def adjust_dipole_get(self,f_list):
         dipole3 = self.dipole_get(f_list)
