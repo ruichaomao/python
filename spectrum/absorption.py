@@ -1,3 +1,4 @@
+#coding=utf-8
 #2021.1.26
 #MaoRuichao
 #Command: python absorption.py ./log_folder
@@ -29,7 +30,7 @@ class Absorption():
             dipole3 = [float(i) for i in dipole2]
             #print (dipole3)
         return dipole3
- 
+
     #get the the adjusted dipole
     def adjust_dipole_get(self,f_list):
         dipole3 = self.dipole_get(f_list)
@@ -110,14 +111,14 @@ class Absorption():
         return MG_vec,MG_norm
     #spectrum, need to recheck
     def spectrum(self,hami,dipole,dimention):
-        D,V = np.linalg.eigh(hami) #eigenvalues and the eigenvectors
-        sor = np.argsort(D)
+        D,V = np.linalg.eigh(hami) #obtain eigenvalues(D) & eigenvectors(V)
+        sor = np.argsort(D) #Sort the eigenvalues
         D_i = D[sor]
         D = D_i
         V_i = V[:,sor]
         V = V_i
-        V = V.T
-        newdipole = np.dot(V,dipole)
+        V = V.T  #Matrix transpose
+        newdipole = np.dot(V,dipole) #Mastrix product
         nstep = 1000
         delt = 0.0124*2 #the number of gaussian depression
         step = float((D[dimention-1]-D[0])/nstep)
@@ -131,13 +132,13 @@ class Absorption():
         for i in np.arange(start, end , step):
             num_strength = 0.0
             for j in range(dimention):
-                osc = np.linalg.norm(newdipole[j])**2
+                osc = np.linalg.norm(newdipole[j])**2 #一维向量的范数，也就是该向量的模
                 flag = 0.0245*i*math.exp(-(D[j]-i)**2/(2*delt**2))*osc/(math.sqrt(2*3.14)*delt)/dimention
                 num_strength = num_strength + flag
-            strengths.append(num_strength)
-            energy.append(i)
-            lamda.append(1240/i)
-        strengths = np.array(strengths).reshape(-1)
+            strengths.append(num_strength)   #通过新偶极距,得到吸收峰强度
+            energy.append(i) #i的单位是eV
+            lamda.append(1240/i)  #eV转化为nm
+        strengths = np.array(strengths).reshape(-1) #使列表变成数组（1列）
         energy = np.array(energy).reshape(-1)
         lamda = np.array(lamda).reshape(-1)
         return D,V,newdipole,strengths, lamda, energy
@@ -245,3 +246,4 @@ if __name__ == '__main__':
     #test.write(strength,'strength.dat',1) 
     #test.write(lamba,'lamba.dat',1) 
     test.write2(lamba,strength,'lamba+strength.dat')
+    test.write2(excited_list1,dipole_list1,'excited+adjust_dipole.dat')
